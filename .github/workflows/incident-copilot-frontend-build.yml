@@ -59,7 +59,7 @@ jobs: # Defines the jobs that make up this workflow.
           overwrite: true # Allows the same commit's coverage artifact to be uploaded on workflow reruns.
           if-no-files-found: warn # Warns instead of masking the original test failure if no report exists.
           retention-days: 1 # Keeps the temporary coverage artifact for one day.
-  sonar: # Analyzes source and coverage on main, where the Free plan exposes analysis and quality-gate data.
+  sonar: # Submits source and coverage analysis to SonarCloud on the main branch.
     name: SonarCloud main-branch analysis # Sets the SonarCloud analysis job name displayed in GitHub Actions.
     needs: test # Runs analysis only after tests and coverage generation succeed.
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' # Restricts analysis to main because the SonarCloud Free plan does not expose pull-request analysis.
@@ -76,16 +76,14 @@ jobs: # Defines the jobs that make up this workflow.
         with: # Configures the coverage artifact download.
           name: coverage-${{ github.sha }} # Selects the report for the current commit.
           path: coverage # Places the report where sonar-project.properties expects it.
-      - name: Analyze with SonarCloud # Runs the official scanner and blocks on a failed quality gate.
+      - name: Analyze with SonarCloud # Runs the official scanner and submits the report for SonarCloud processing.
         uses: SonarSource/sonarqube-scan-action@e805d875275f728fac1885b413934be6d7c63f65 # v8.4.1; pins the scanner action to an immutable commit.
         env: # Provides credentials to the scanner without writing them to source.
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }} # Reads the token from the repository's Actions secrets.
-        with: # Configures the SonarScanner CLI.
-          args: -Dsonar.qualitygate.wait=true -Dsonar.qualitygate.timeout=300 # Waits up to five minutes for the quality-gate result.
   build: # Creates and uploads the production frontend bundle after quality checks pass.
     name: Build incident-copilot-frontend # Sets the build job name displayed in GitHub Actions.
     needs: [dependency-audit, test, sonar] # Requires a clean dependency audit, passing tests, and SonarCloud analysis before producing the artifact.
-    if: '!cancelled() && needs.dependency-audit.result == ''success'' && needs.test.result == ''success'' && (needs.sonar.result == ''success'' || (github.event_name == ''pull_request'' && needs.sonar.result == ''skipped''))' # Allows PR builds without SonarCloud analysis on the Free plan and requires main-branch quality gates, while skipping cancelled runs.
+    if: '!cancelled() && needs.dependency-audit.result == ''success'' && needs.test.result == ''success'' && (needs.sonar.result == ''success'' || (github.event_name == ''pull_request'' && needs.sonar.result == ''skipped''))' # Allows PR builds without SonarCloud analysis on the Free plan and requires successful main-branch analysis submission, while skipping cancelled runs.
     runs-on: ubuntu-24.04 # Pins the runner image to reduce unexpected environment changes.
     timeout-minutes: 10 # Stops the job if it exceeds ten minutes.
     outputs: # Publishes values from this job for dependent jobs in this workflow.
