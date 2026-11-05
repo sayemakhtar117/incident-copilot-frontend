@@ -1,0 +1,31 @@
+name: Incident-Copilot-Frontend Build # Sets the workflow name displayed in GitHub Actions.
+on: # Defines the events that start this workflow.
+  push: # Starts the workflow when commits are pushed.
+    branches: # Limits push-triggered runs to the listed branches.
+      - main # Runs on pushes to the main branch, including merges.
+  workflow_dispatch: # Allows a user to start the workflow manually.
+permissions: # Sets the workflow's default GitHub token permissions.
+  contents: read # Allows reading repository contents without write access.
+concurrency: # Prevents redundant runs for the same branch or ref.
+  group: incident-copilot-frontend-build-${{ github.ref }} # Groups runs by workflow and Git ref.
+  cancel-in-progress: true # Cancels an older run when a newer one starts in that group.
+jobs: # Defines the jobs that make up this workflow.
+  build: # Creates the frontend build job.
+    name: Build incident-copilot-frontend # Sets the job name shown in the Actions interface.
+    if: github.ref == 'refs/heads/main' # Restricts automatic and manual runs to main.
+    runs-on: ubuntu-latest # Uses GitHub's latest hosted Ubuntu runner.
+    timeout-minutes: 10 # Stops the job if it exceeds ten minutes.
+    steps: # Lists the commands and actions performed by this job.
+      - name: Check out repository # Adds the repository source to the runner.
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4; pins the checkout action to an immutable commit.
+        with: # Configures the checkout action.
+          persist-credentials: false # Prevents the checkout token from persisting in Git configuration.
+      - name: Set up Node.js # Prepares the requested Node.js runtime.
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4; pins the setup action to an immutable commit.
+        with: # Configures the Node.js setup action.
+          node-version: 22 # Uses the Node.js 22 release line.
+          cache: npm # Caches npm's package data to speed up dependency installation.
+      - name: Install dependencies # Installs the exact dependency versions in the lockfile.
+        run: npm ci # Performs a clean, reproducible npm install.
+      - name: Build # Checks TypeScript and creates the production frontend bundle.
+        run: npm run build # Runs the project's production build script.
