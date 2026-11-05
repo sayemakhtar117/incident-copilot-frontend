@@ -28,7 +28,7 @@ The UI uses `GET /api/status`, `GET /api/incidents`, `POST /api/incidents`, `GET
 
 ## Continuous integration and SonarCloud
 
-The GitHub Actions workflows audit npm dependencies at high severity and above, lint and test with coverage, run CodeQL security analysis, check the SonarCloud quality gate, build the production bundle, and upload it as a seven-day artifact. Main-branch runs are not canceled when newer commits arrive; superseded pull-request runs are canceled. Dependabot and forked pull requests run dependency auditing, linting, tests, and CodeQL, but skip SonarCloud because GitHub does not expose repository secrets to those workflows. The production artifact waits for all required checks; its artifact ID is exposed for a future deployment job.
+The GitHub Actions workflows audit npm dependencies at high severity and above, lint and test with coverage, run CodeQL security analysis, check the SonarCloud quality gate on `main`, build the production bundle, and upload it as a seven-day artifact. Main-branch runs are not canceled when newer commits arrive; superseded pull-request runs are canceled. Pull requests run dependency auditing, linting, tests, and CodeQL, but skip SonarCloud analysis because the SonarCloud Free plan only exposes analysis and quality-gate results after changes are merged into the main branch. The production artifact waits for all required checks; its artifact ID is exposed for a future deployment job.
 
 In SonarCloud, configure the project for CI-based analysis (disable automatic analysis) to enable LCOV coverage reporting. The repository's `sonar-project.properties` identifies the `incident-copilot-frontend` project in the `sayemakhtar117` organization.
 

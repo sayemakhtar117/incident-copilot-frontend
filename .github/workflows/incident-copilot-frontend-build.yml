@@ -59,10 +59,10 @@ jobs: # Defines the jobs that make up this workflow.
           overwrite: true # Allows the same commit's coverage artifact to be uploaded on workflow reruns.
           if-no-files-found: warn # Warns instead of masking the original test failure if no report exists.
           retention-days: 1 # Keeps the temporary coverage artifact for one day.
-  sonar: # Analyzes source and coverage, then waits for the SonarCloud quality gate.
-    name: SonarCloud analysis # Sets the analysis job name displayed in GitHub Actions.
+  sonar: # Analyzes source and coverage on main, where the Free plan exposes analysis and quality-gate data.
+    name: SonarCloud main-branch analysis # Sets the SonarCloud analysis job name displayed in GitHub Actions.
     needs: test # Runs analysis only after tests and coverage generation succeed.
-    if: github.event_name != 'pull_request' || (github.event.pull_request.head.repo.fork == false && github.actor != 'dependabot[bot]') # Skips secret-dependent analysis for forked and Dependabot pull requests.
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' # Restricts analysis to main because the SonarCloud Free plan does not expose pull-request analysis.
     runs-on: ubuntu-24.04 # Pins the runner image to reduce unexpected environment changes.
     timeout-minutes: 10 # Stops the job if analysis exceeds ten minutes.
     steps: # Lists the commands and actions performed by this job.
@@ -85,7 +85,7 @@ jobs: # Defines the jobs that make up this workflow.
   build: # Creates and uploads the production frontend bundle after quality checks pass.
     name: Build incident-copilot-frontend # Sets the build job name displayed in GitHub Actions.
     needs: [dependency-audit, test, sonar] # Requires a clean dependency audit, passing tests, and SonarCloud analysis before producing the artifact.
-    if: '!cancelled() && needs.dependency-audit.result == ''success'' && needs.test.result == ''success'' && (needs.sonar.result == ''success'' || (github.event_name == ''pull_request'' && (github.event.pull_request.head.repo.fork == true || github.actor == ''dependabot[bot]'') && needs.sonar.result == ''skipped''))' # Allows fork and Dependabot PR builds without secrets but otherwise requires every security and quality check, and skips cancelled runs.
+    if: '!cancelled() && needs.dependency-audit.result == ''success'' && needs.test.result == ''success'' && (needs.sonar.result == ''success'' || (github.event_name == ''pull_request'' && needs.sonar.result == ''skipped''))' # Allows PR builds without SonarCloud analysis on the Free plan and requires main-branch quality gates, while skipping cancelled runs.
     runs-on: ubuntu-24.04 # Pins the runner image to reduce unexpected environment changes.
     timeout-minutes: 10 # Stops the job if it exceeds ten minutes.
     outputs: # Publishes values from this job for dependent jobs in this workflow.
