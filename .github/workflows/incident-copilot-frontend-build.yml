@@ -46,7 +46,7 @@ jobs: # Defines the jobs that make up this workflow.
           node-version-file: .nvmrc # Reads the shared Node.js version from the repository root.
           cache: npm # Caches npm's package data to speed up dependency installation.
       - name: Install dependencies # Installs the exact dependency versions in the lockfile.
-        run: npm ci # Performs a clean, reproducible npm install.
+        run: npm ci --ignore-scripts # Installs locked dependencies without running third-party lifecycle scripts.
       - name: Lint source code # Runs fast static checks before the test suite.
         run: npm run lint # Fails on lint errors without changing source files.
       - name: Run tests and collect coverage # Runs tests and generates the LCOV report used by SonarCloud.
@@ -101,7 +101,7 @@ jobs: # Defines the jobs that make up this workflow.
           node-version-file: .nvmrc # Reads the shared Node.js version from the repository root.
           cache: npm # Caches npm's package data to speed up dependency installation.
       - name: Install dependencies # Installs the exact dependency versions in the lockfile.
-        run: npm ci # Performs a clean, reproducible npm install.
+        run: npm ci --ignore-scripts # Installs locked dependencies without running third-party lifecycle scripts.
       - name: Build # Checks TypeScript and creates the production frontend bundle.
         run: npm run build # Runs the project's production build script.
       - name: Upload production build artifact # Saves the built frontend files for later download or deployment.
