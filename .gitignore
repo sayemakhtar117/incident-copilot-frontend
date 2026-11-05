@@ -1,6 +1,7 @@
 target/
 node_modules/
 dist/
+coverage/
 .env
 !.env.example
 *.iml

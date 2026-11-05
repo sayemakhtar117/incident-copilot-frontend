@@ -3,29 +3,112 @@ on: # Defines the events that start this workflow.
   push: # Starts the workflow when commits are pushed.
     branches: # Limits push-triggered runs to the listed branches.
       - main # Runs on pushes to the main branch, including merges.
+  pull_request: # Starts the workflow when pull requests are opened or updated.
+    branches: # Limits pull-request-triggered runs to the listed branches.
+      - main # Runs on pull requests targeting the main branch.
   workflow_dispatch: # Allows a user to start the workflow manually.
 permissions: # Sets the workflow's default GitHub token permissions.
   contents: read # Allows reading repository contents without write access.
 concurrency: # Prevents redundant runs for the same branch or ref.
   group: incident-copilot-frontend-build-${{ github.ref }} # Groups runs by workflow and Git ref.
-  cancel-in-progress: true # Cancels an older run when a newer one starts in that group.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }} # Cancels superseded pull-request runs but lets main-branch validations finish.
 jobs: # Defines the jobs that make up this workflow.
-  build: # Creates the frontend build job.
-    name: Build incident-copilot-frontend # Sets the job name shown in the Actions interface.
-    if: github.ref == 'refs/heads/main' # Restricts automatic and manual runs to main.
-    runs-on: ubuntu-latest # Uses GitHub's latest hosted Ubuntu runner.
+  dependency-audit: # Checks all locked production and development dependencies for known vulnerabilities.
+    name: Dependency security audit # Sets the dependency-audit job name displayed in GitHub Actions.
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main' # Runs pull requests and main-branch pushes or manual runs.
+    runs-on: ubuntu-24.04 # Pins the runner image to reduce unexpected environment changes.
+    timeout-minutes: 10 # Stops the job if it exceeds ten minutes.
+    steps: # Lists the commands and actions performed by this job.
+      - name: Check out repository # Adds the lockfile and repository source to the runner.
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1; pins the checkout action to an immutable commit.
+        with: # Configures the checkout action.
+          persist-credentials: false # Prevents the checkout token from persisting in Git configuration.
+      - name: Set up Node.js # Prepares the Node.js runtime used to run npm audit.
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0; pins the setup action to an immutable commit.
+        with: # Configures the Node.js setup action.
+          node-version-file: .nvmrc # Reads the shared Node.js version from the repository root.
+          cache: npm # Caches npm's package data to speed up the audit.
+      - name: Audit dependencies # Checks dependencies in package-lock.json against npm's vulnerability advisories.
+        run: npm audit --audit-level=high # Blocks on high and critical vulnerabilities while avoiding low/moderate advisory noise.
+  test: # Runs the automated test suite and creates its coverage report.
+    name: Test incident-copilot-frontend # Sets the test job name displayed in GitHub Actions.
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main' # Runs pull requests and main-branch pushes or manual runs.
+    runs-on: ubuntu-24.04 # Pins the runner image to reduce unexpected environment changes.
     timeout-minutes: 10 # Stops the job if it exceeds ten minutes.
     steps: # Lists the commands and actions performed by this job.
       - name: Check out repository # Adds the repository source to the runner.
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4; pins the checkout action to an immutable commit.
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1; pins the checkout action to an immutable commit.
         with: # Configures the checkout action.
           persist-credentials: false # Prevents the checkout token from persisting in Git configuration.
       - name: Set up Node.js # Prepares the requested Node.js runtime.
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4; pins the setup action to an immutable commit.
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0; pins the setup action to an immutable commit.
         with: # Configures the Node.js setup action.
-          node-version: 22 # Uses the Node.js 22 release line.
+          node-version-file: .nvmrc # Reads the shared Node.js version from the repository root.
+          cache: npm # Caches npm's package data to speed up dependency installation.
+      - name: Install dependencies # Installs the exact dependency versions in the lockfile.
+        run: npm ci # Performs a clean, reproducible npm install.
+      - name: Lint source code # Runs fast static checks before the test suite.
+        run: npm run lint # Fails on lint errors without changing source files.
+      - name: Run tests and collect coverage # Runs tests and generates the LCOV report used by SonarCloud.
+        run: npm run test:coverage # Fails the workflow if tests fail and writes coverage/lcov.info.
+      - name: Upload coverage report # Transfers the generated coverage report to the SonarCloud analysis job after tests pass.
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2; pins the upload action to an immutable commit.
+        with: # Configures the coverage artifact upload.
+          name: coverage-${{ github.sha }} # Identifies the coverage report by commit.
+          path: coverage/lcov.info # Uploads only the LCOV file required for analysis.
+          overwrite: true # Allows the same commit's coverage artifact to be uploaded on workflow reruns.
+          if-no-files-found: warn # Warns instead of masking the original test failure if no report exists.
+          retention-days: 1 # Keeps the temporary coverage artifact for one day.
+  sonar: # Analyzes source and coverage, then waits for the SonarCloud quality gate.
+    name: SonarCloud analysis # Sets the analysis job name displayed in GitHub Actions.
+    needs: test # Runs analysis only after tests and coverage generation succeed.
+    if: github.event_name != 'pull_request' || (github.event.pull_request.head.repo.fork == false && github.actor != 'dependabot[bot]') # Skips secret-dependent analysis for forked and Dependabot pull requests.
+    runs-on: ubuntu-24.04 # Pins the runner image to reduce unexpected environment changes.
+    timeout-minutes: 10 # Stops the job if analysis exceeds ten minutes.
+    steps: # Lists the commands and actions performed by this job.
+      - name: Check out repository # Adds the full Git history required for accurate blame and pull-request analysis.
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1; pins the checkout action to an immutable commit.
+        with: # Configures the checkout action.
+          fetch-depth: 0 # Fetches all history so SonarCloud can attribute changes correctly.
+          persist-credentials: false # Prevents the checkout token from persisting in Git configuration.
+      - name: Download coverage report # Retrieves the test coverage report generated by the test job.
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2; pins the download action to an immutable commit.
+        with: # Configures the coverage artifact download.
+          name: coverage-${{ github.sha }} # Selects the report for the current commit.
+          path: coverage # Places the report where sonar-project.properties expects it.
+      - name: Analyze with SonarCloud # Runs the official scanner and blocks on a failed quality gate.
+        uses: SonarSource/sonarqube-scan-action@e805d875275f728fac1885b413934be6d7c63f65 # v8.4.1; pins the scanner action to an immutable commit.
+        env: # Provides credentials to the scanner without writing them to source.
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }} # Reads the token from the repository's Actions secrets.
+        with: # Configures the SonarScanner CLI.
+          args: -Dsonar.qualitygate.wait=true -Dsonar.qualitygate.timeout=300 # Waits up to five minutes for the quality-gate result.
+  build: # Creates and uploads the production frontend bundle after quality checks pass.
+    name: Build incident-copilot-frontend # Sets the build job name displayed in GitHub Actions.
+    needs: [dependency-audit, test, sonar] # Requires a clean dependency audit, passing tests, and SonarCloud analysis before producing the artifact.
+    if: '!cancelled() && needs.dependency-audit.result == ''success'' && needs.test.result == ''success'' && (needs.sonar.result == ''success'' || (github.event_name == ''pull_request'' && (github.event.pull_request.head.repo.fork == true || github.actor == ''dependabot[bot]'') && needs.sonar.result == ''skipped''))' # Allows fork and Dependabot PR builds without secrets but otherwise requires every security and quality check, and skips cancelled runs.
+    runs-on: ubuntu-24.04 # Pins the runner image to reduce unexpected environment changes.
+    timeout-minutes: 10 # Stops the job if it exceeds ten minutes.
+    outputs: # Publishes values from this job for dependent jobs in this workflow.
+      artifact-id: ${{ steps.upload.outputs.artifact-id }} # Exposes the uploaded artifact's GitHub-generated ID.
+    steps: # Lists the commands and actions performed by this job.
+      - name: Check out repository # Adds the repository source to the runner.
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1; pins the checkout action to an immutable commit.
+        with: # Configures the checkout action.
+          persist-credentials: false # Prevents the checkout token from persisting in Git configuration.
+      - name: Set up Node.js # Prepares the requested Node.js runtime.
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0; pins the setup action to an immutable commit.
+        with: # Configures the Node.js setup action.
+          node-version-file: .nvmrc # Reads the shared Node.js version from the repository root.
           cache: npm # Caches npm's package data to speed up dependency installation.
       - name: Install dependencies # Installs the exact dependency versions in the lockfile.
         run: npm ci # Performs a clean, reproducible npm install.
       - name: Build # Checks TypeScript and creates the production frontend bundle.
         run: npm run build # Runs the project's production build script.
+      - name: Upload production build artifact # Saves the built frontend files for later download or deployment.
+        id: upload # Assigns an ID so this step's outputs can be referenced.
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2; pins the upload action to an immutable commit.
+        with: # Configures the artifact upload.
+          name: incident-copilot-frontend-${{ github.sha }} # Identifies the artifact by project and commit.
+          path: dist/ # Uploads the production output generated by the build.
+          overwrite: true # Allows the same commit's build artifact to be uploaded on workflow reruns.
+          retention-days: 7 # Keeps the artifact available for seven days.
