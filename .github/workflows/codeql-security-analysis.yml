@@ -1,0 +1,39 @@
+name: CodeQL Security Analysis # Sets the workflow name displayed in GitHub Actions.
+on: # Defines the events that start this workflow.
+  push: # Scans commits pushed to the default development branch.
+    branches: # Limits push-triggered scans to the listed branches.
+      - main # Runs on pushes to main, including merges.
+  pull_request: # Scans proposed changes before they are merged.
+    branches: # Limits pull-request scans to the listed branches.
+      - main # Runs on pull requests targeting main.
+  schedule: # Runs periodic scans to detect newly disclosed vulnerabilities.
+    - cron: '17 3 * * 1' # Runs every Monday at 03:17 UTC.
+  workflow_dispatch: # Allows a user to start a security scan manually.
+permissions: # Sets the workflow's default GitHub token permissions.
+  contents: read # Allows reading repository contents without write access.
+concurrency: # Prevents redundant scans for the same branch or ref.
+  group: codeql-security-analysis-${{ github.ref }} # Groups runs by workflow and Git ref.
+  cancel-in-progress: true # Cancels an older run when a newer one starts in that group.
+jobs: # Defines the jobs that make up this workflow.
+  analyze: # Runs GitHub CodeQL static security analysis.
+    name: Analyze JavaScript and TypeScript # Sets the CodeQL job name displayed in GitHub Actions.
+    runs-on: ubuntu-24.04 # Pins the runner image to reduce unexpected environment changes.
+    timeout-minutes: 20 # Stops the analysis if it exceeds twenty minutes.
+    permissions: # Grants only the permissions CodeQL needs to upload findings.
+      actions: read # Allows CodeQL to read workflow metadata.
+      contents: read # Allows CodeQL to read repository source code.
+      security-events: write # Allows CodeQL to publish results to GitHub code scanning.
+    steps: # Lists the commands and actions performed by this job.
+      - name: Check out repository # Adds the source code to the runner for analysis.
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1; pins the checkout action to an immutable commit.
+        with: # Configures the checkout action.
+          persist-credentials: false # Prevents the checkout token from persisting in Git configuration.
+      - name: Initialize CodeQL # Configures CodeQL for static analysis of JavaScript and TypeScript.
+        uses: github/codeql-action/init@33d7b85da1a04171e211befe2c739303b9a4c066 # v4; pins the official CodeQL action to an immutable commit.
+        with: # Configures the CodeQL analysis.
+          languages: javascript-typescript # Analyzes both JavaScript and TypeScript source.
+          build-mode: none # Uses CodeQL's supported no-build mode for this interpreted-language project.
+      - name: Analyze and upload results # Runs CodeQL security queries and publishes findings in GitHub code scanning.
+        uses: github/codeql-action/analyze@33d7b85da1a04171e211befe2c739303b9a4c066 # v4; pins the official CodeQL action to an immutable commit.
+        with: # Configures the CodeQL result upload.
+          category: /language:javascript-typescript # Labels results so GitHub can distinguish this language analysis.

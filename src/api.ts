@@ -25,7 +25,7 @@ async function request<T>(path: string, init?: RequestInit, baseOverride?: strin
   const base = baseOverride ?? getApiBase();
   const res = await fetch(base + path, {
     ...init,
-    headers: { 'Content-Type': 'application/json', ...(init?.headers ?? {}) },
+    headers: { 'Content-Type': 'application/json', ...init?.headers },
   });
   if (!res.ok) {
     let message = `HTTP ${res.status}`;

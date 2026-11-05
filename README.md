@@ -11,10 +11,12 @@ This repository contains only the React, TypeScript, and Vite frontend. The Spri
 
 ## Run locally
 
-Install Node.js, then start the Java backend first. By default, it listens on `http://localhost:8081`. From this repository root, run:
+Use Node.js 24.15.0+ (recommended), 22.22.2+, or 26.0.0+, then start the Java backend first. By default, it listens on `http://localhost:8081`. CI reads the Node.js major version from `.nvmrc`. From this repository root, run:
 
 ```powershell
 npm ci
+npm run lint
+npm test
 npm run dev
 ```
 
@@ -23,6 +25,14 @@ Open `http://localhost:5173`. Vite proxies `/api` and `/actuator` requests to th
 ## Backend API calls
 
 The UI uses `GET /api/status`, `GET /api/incidents`, `POST /api/incidents`, `GET /api/eval`, and `GET /api/analyze/stream`.
+
+## Continuous integration and SonarCloud
+
+The GitHub Actions workflows audit npm dependencies at high severity and above, lint and test with coverage, run CodeQL security analysis, check the SonarCloud quality gate, build the production bundle, and upload it as a seven-day artifact. Main-branch runs are not canceled when newer commits arrive; superseded pull-request runs are canceled. Dependabot and forked pull requests run dependency auditing, linting, tests, and CodeQL, but skip SonarCloud because GitHub does not expose repository secrets to those workflows. The production artifact waits for all required checks; its artifact ID is exposed for a future deployment job.
+
+In SonarCloud, configure the project for CI-based analysis (disable automatic analysis) to enable LCOV coverage reporting. The repository's `sonar-project.properties` identifies the `incident-copilot-frontend` project in the `sayemakhtar117` organization.
+
+Enable GitHub secret scanning separately in the repository's **Settings → Security → Code security and analysis** if it is available for the repository. Secret scanning is a GitHub repository setting and is not enabled by these workflow files.
 
 ## Deploy separately
 
