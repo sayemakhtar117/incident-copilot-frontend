@@ -103,7 +103,7 @@ jobs: # Defines the jobs that make up this workflow.
       - name: Build # Checks TypeScript and creates the production frontend bundle.
         run: npm run build # Runs the project's production build script.
         env: # Sets public build-time configuration for GitHub Pages.
-          VITE_BASE_PATH: /incident-copilot-frontend/ # Uses the repository path required by GitHub project Pages.
+          VITE_BASE_PATH: / # Serves assets from the custom domain root.
           VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL }} # Reads the public backend URL from an optional repository Actions variable.
       - name: Upload production build artifact # Saves the built frontend files for later download or deployment.
         id: upload # Assigns an ID so this step's outputs can be referenced.

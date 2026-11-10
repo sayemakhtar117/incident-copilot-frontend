@@ -36,9 +36,9 @@ Enable GitHub secret scanning separately in the repository's **Settings → Secu
 
 ## Deploy on GitHub Pages
 
-The workflow automatically deploys successful builds from `main` to GitHub Pages at `https://sayemakhtar117.github.io/incident-copilot-frontend/`. In repository settings, open **Settings → Pages** and set the build and deployment source to **GitHub Actions**. Pull requests run validation but do not deploy.
+The workflow automatically deploys successful builds from `main` to GitHub Pages at `https://incidentpilot.in`. In repository settings, open **Settings → Pages**, set the build and deployment source to **GitHub Actions**, and configure `incidentpilot.in` as the custom domain. The build serves assets from the domain root. Pull requests run validation but do not deploy.
 
-The frontend is static; the separate Java backend must also be publicly reachable. To configure it, add a repository Actions variable named `VITE_API_BASE_URL` with the backend base URL (no trailing slash). The workflow injects it at build time. Then set `CORS_ALLOWED_ORIGINS` on the backend to `https://sayemakhtar117.github.io`. Without a backend URL, the UI can still be opened, but API-backed features will show as offline until a URL is configured in the Connection panel.
+The frontend is static; the separate Java backend must also be publicly reachable. To configure it, add a repository Actions variable named `VITE_API_BASE_URL` with the backend base URL (no trailing slash). The workflow injects it at build time. Then set `CORS_ALLOWED_ORIGINS` on the backend to `https://incidentpilot.in`. Without a backend URL, the UI can still be opened, but API-backed features will show as offline until a URL is configured in the Connection panel.
 
 For Render, the included [`render.yaml`](render.yaml) configures the UI as a static site. For Netlify, Vercel, or Cloudflare Pages, use `npm ci && npm run build` as the build command and `dist` as the output directory.
 
