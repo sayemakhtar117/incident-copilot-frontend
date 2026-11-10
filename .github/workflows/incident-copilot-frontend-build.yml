@@ -105,6 +105,7 @@ jobs: # Defines the jobs that make up this workflow.
         env: # Sets public build-time configuration for GitHub Pages.
           VITE_BASE_PATH: / # Serves assets from the custom domain root.
           VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL }} # Reads the public backend URL from an optional repository Actions variable.
+          VITE_FARO_URL: ${{ vars.VITE_FARO_URL }} # Reads the Grafana Faro collector URL from an optional repository Actions variable.
       - name: Upload production build artifact # Saves the built frontend files for later download or deployment.
         id: upload # Assigns an ID so this step's outputs can be referenced.
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2; pins the upload action to an immutable commit.

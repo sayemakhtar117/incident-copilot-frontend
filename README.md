@@ -40,6 +40,10 @@ The workflow automatically deploys successful builds from `main` to GitHub Pages
 
 The frontend is static; the separate Java backend must also be publicly reachable. To configure it, add a repository Actions variable named `VITE_API_BASE_URL` with the backend base URL (no trailing slash). The workflow injects it at build time. Then set `CORS_ALLOWED_ORIGINS` on the backend to `https://incidentpilot.in`. Without a backend URL, the UI can still be opened, but API-backed features will show as offline until a URL is configured in the Connection panel.
 
+### Frontend monitoring with Grafana Cloud
+
+The app uses Grafana Cloud Frontend Observability via the Faro Web SDK. The production build uses the configured IncidentPilot collector by default; set the optional Actions variable `VITE_FARO_URL` to override it. In Grafana, allow the origin `https://incidentpilot.in`. Faro captures browser errors, web performance, React errors, and HTTP request traces. The collector URL is public client-side configuration, not a secret.
+
 For Render, the included [`render.yaml`](render.yaml) configures the UI as a static site. For Netlify, Vercel, or Cloudflare Pages, use `npm ci && npm run build` as the build command and `dist` as the output directory.
 
 ### Troubleshooting
