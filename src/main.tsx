@@ -5,11 +5,7 @@ import { TracingInstrumentation } from '@grafana/faro-web-tracing';
 import App from './App';
 import './styles.css';
 
-const faroUrl =
-  import.meta.env.VITE_FARO_URL ||
-  (import.meta.env.PROD
-    ? 'https://faro-collector-prod-ap-south-1.grafana.net/collect/8b13f3d0de4ee126110127b6d56dcea8'
-    : undefined);
+const faroUrl = import.meta.env.VITE_FARO_URL;
 
 if (faroUrl) {
   initializeFaro({

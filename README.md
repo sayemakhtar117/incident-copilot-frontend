@@ -42,7 +42,7 @@ The frontend is static; the separate Java backend must also be publicly reachabl
 
 ### Frontend monitoring with Grafana Cloud
 
-The app uses Grafana Cloud Frontend Observability via the Faro Web SDK. The production build uses the configured IncidentPilot collector by default; set the optional Actions variable `VITE_FARO_URL` to override it. In Grafana, allow the origin `https://incidentpilot.in`. Faro captures browser errors, web performance, React errors, and HTTP request traces. The collector URL is public client-side configuration, not a secret.
+The app uses Grafana Cloud Frontend Observability via the Faro Web SDK. To enable it in production, add a repository Actions variable named `VITE_FARO_URL` containing the Grafana Web SDK collector URL; without that variable, Faro is disabled. Configure Grafana to allow the origin `https://incidentpilot.in`. Faro captures browser errors, web performance, React errors, and HTTP request traces. The collector URL is public client-side configuration, not a secret, so use a repository variable rather than a secret.
 
 For Render, the included [`render.yaml`](render.yaml) configures the UI as a static site. For Netlify, Vercel, or Cloudflare Pages, use `npm ci && npm run build` as the build command and `dist` as the output directory.
 
