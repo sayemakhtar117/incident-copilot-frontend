@@ -24,7 +24,7 @@ Open `http://localhost:5173`. Vite proxies `/api` and `/actuator` requests to th
 
 ## Backend API calls
 
-The UI uses `GET /api/status`, `GET /api/incidents`, `POST /api/incidents`, `GET /api/eval`, and `GET /api/analyze/stream`.
+The UI first signs in through `POST /api/auth/login`, then sends the short-lived bearer token with its incident API requests. The backend requires authentication for `/api/**` except the login endpoint. The token is kept in memory only and is cleared on page reload, sign-out, or when the API rejects it.
 
 ## Continuous integration and SonarCloud
 

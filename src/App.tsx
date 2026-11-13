@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { api } from './api';
+import { api, ApiError, hasAccessToken, onUnauthorized, setAccessToken } from './api';
 import { useLocalStorage } from './hooks';
 import type { Incident, NewIncident, Status } from './types';
 import AnalyzeTab from './components/AnalyzeTab';
 import ConnectionPanel from './components/ConnectionPanel';
 import EvalTab from './components/EvalTab';
 import KnowledgeTab from './components/KnowledgeTab';
+import LoginPage from './components/LoginPage';
 import SourceDrawer from './components/SourceDrawer';
 
 type Tab = 'analyze' | 'knowledge' | 'eval';
@@ -27,6 +28,7 @@ export default function App() {
   const [draft, setDraft] = useState<NewIncident | null>(null);
   const [showConn, setShowConn] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [authenticated, setAuthenticated] = useState(hasAccessToken);
   const [theme, setTheme] = useLocalStorage<Theme>('copilot.theme', 'auto');
 
   useEffect(() => {
@@ -35,6 +37,13 @@ export default function App() {
   }, [theme]);
 
   const refresh = useCallback(async () => {
+    if (!hasAccessToken()) {
+      setStatus(null);
+      setIncidents([]);
+      setConnError(null);
+      setChecked(true);
+      return;
+    }
     try {
       const [s, list] = await Promise.all([api.status(), api.incidents()]);
       setStatus(s);
@@ -42,11 +51,36 @@ export default function App() {
       setConnError(null);
     } catch (e) {
       setStatus(null);
-      setConnError(e instanceof Error ? e.message : String(e));
+      setIncidents([]);
+      if (e instanceof ApiError && e.status === 401) {
+        setAuthenticated(false);
+        setConnError(null);
+      } else {
+        setConnError(e instanceof Error ? e.message : String(e));
+      }
     } finally {
       setChecked(true);
     }
   }, []);
+
+  const login = useCallback(async (email: string, password: string) => {
+    const result = await api.login(email, password);
+    setAccessToken(result.accessToken);
+    setAuthenticated(true);
+    setChecked(false);
+    await refresh();
+  }, [refresh]);
+
+  const logout = useCallback(() => {
+    setAccessToken(null);
+    setAuthenticated(false);
+    setStatus(null);
+    setIncidents([]);
+    setConnError(null);
+    setChecked(true);
+  }, []);
+
+  useEffect(() => onUnauthorized(logout), [logout]);
 
   useEffect(() => {
     refresh();
@@ -73,6 +107,8 @@ export default function App() {
 
   const connected = status !== null;
 
+  if (!authenticated) return <LoginPage onLogin={login} />;
+
   return (
     <div className="app">
       <header>
@@ -81,6 +117,7 @@ export default function App() {
           <p className="muted">Redact, retrieve similar incidents, investigate with tools, get a cited fix.</p>
         </div>
         <div className="row">
+          <button className="ghost small" onClick={logout}>Sign out</button>
           <button className="ghost small" onClick={() => setTheme(theme === 'auto' ? 'dark' : theme === 'dark' ? 'light' : 'auto')}>
             Theme: {theme}
           </button>
