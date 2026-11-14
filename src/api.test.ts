@@ -52,7 +52,7 @@ describe('API client', () => {
   });
 
   it('sends the login request and returns its access token', async () => {
-    const response = { accessToken: 'signed-token', expiresInSeconds: 300 };
+    const response = { accessToken: 'signed-token', expiresInSeconds: 900 };
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(JSON.stringify(response), {
         status: 200,
